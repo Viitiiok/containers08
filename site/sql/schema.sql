@@ -1,7 +1,7 @@
 CREATE TABLE page (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
-   title TEXT,
-   content TEXT
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    content TEXT
 );
 
 INSERT INTO page (title, content) VALUES ('Page 1', 'Content 1');
