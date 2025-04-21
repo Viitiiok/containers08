@@ -1,17 +1,22 @@
 <?php
 
 class Page {
-   private $template;
+    private $template;
 
-   public function __construct($template) {
-      $this->template = file_get_contents($template);
-   }
+    public function __construct($template) {
+        if (!file_exists($template)) {
+            throw new Exception("Template file not found: {$template}");
+        }
+        $this->template = $template;
+    }
 
-   public function Render($data) {
-      $output = $this->template;
-      foreach ($data as $key => $value) {
-         $output = str_replace("{{ $key }}", $value, $output);
-      }
-      return $output;
-   }
+    public function Render($data) {
+        $content = file_get_contents($this->template);
+        
+        foreach ($data as $key => $value) {
+            $content = str_replace("{{{$key}}}", htmlspecialchars($value), $content);
+        }
+        
+        return $content;
+    }
 }

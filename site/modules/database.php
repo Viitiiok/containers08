@@ -1,53 +1,73 @@
 <?php
 
 class Database {
-   private $pdo;
+    private $db;
 
-   public function __construct($path) {
-      $this->pdo = new PDO("sqlite:$path");
-      $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-   }
+    public function __construct($path) {
+        try {
+            $this->db = new PDO("sqlite:{$path}");
+            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            die("Database connection failed: " . $e->getMessage());
+        }
+    }
 
-   public function Execute($sql) {
-      return $this->pdo->exec($sql);
-   }
+    public function Execute($sql) {
+        return $this->db->exec($sql);
+    }
 
-   public function Fetch($sql) {
-      $stmt = $this->pdo->query($sql);
-      return $stmt->fetchAll(PDO::FETCH_ASSOC);
-   }
+    public function Fetch($sql) {
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-   public function Create($table, $data) {
-      $columns = implode(', ', array_keys($data));
-      $placeholders = implode(', ', array_map(fn($k) => ":$k", array_keys($data)));
+    public function Create($table, $data) {
+        $columns = implode(', ', array_keys($data));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_values($data));
+        
+        return $this->db->lastInsertId();
+    }
 
-      $stmt = $this->pdo->prepare("INSERT INTO $table ($columns) VALUES ($placeholders)");
-      $stmt->execute($data);
+    public function Read($table, $id) {
+        $sql = "SELECT * FROM {$table} WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
-      return $this->pdo->lastInsertId();
-   }
+    public function Update($table, $id, $data) {
+        $set = [];
+        foreach (array_keys($data) as $column) {
+            $set[] = "{$column} = ?";
+        }
+        $setStr = implode(', ', $set);
+        
+        $sql = "UPDATE {$table} SET {$setStr} WHERE id = ?";
+        
+        $values = array_values($data);
+        $values[] = $id;
+        
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($values);
+    }
 
-   public function Read($table, $id) {
-      $stmt = $this->pdo->prepare("SELECT * FROM $table WHERE id = :id");
-      $stmt->execute(['id' => $id]);
-      return $stmt->fetch(PDO::FETCH_ASSOC);
-   }
+    public function Delete($table, $id) {
+        $sql = "DELETE FROM {$table} WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        
+        return $stmt->execute([$id]);
+    }
 
-   public function Update($table, $id, $data) {
-      $fields = implode(', ', array_map(fn($k) => "$k = :$k", array_keys($data)));
-      $data['id'] = $id;
-
-      $stmt = $this->pdo->prepare("UPDATE $table SET $fields WHERE id = :id");
-      return $stmt->execute($data);
-   }
-
-   public function Delete($table, $id) {
-      $stmt = $this->pdo->prepare("DELETE FROM $table WHERE id = :id");
-      return $stmt->execute(['id' => $id]);
-   }
-
-   public function Count($table) {
-      $stmt = $this->pdo->query("SELECT COUNT(*) FROM $table");
-      return $stmt->fetchColumn();
-   }
+    public function Count($table) {
+        $sql = "SELECT COUNT(*) as count FROM {$table}";
+        $stmt = $this->db->query($sql);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $result['count'];
+    }
 }
